@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "2.0.0",
+  "name": "starrocks-ace-blueprint",
+  "version": "1.11.4",
+  "outcome": "StarRocks",
+  "description": "Deploys a minimal StarRocks cluster (1 FE + 1 BE) via the kube-starrocks Helm chart",
+  "instanceCount": 1,
+  "hardwareTierCount": 1
+}

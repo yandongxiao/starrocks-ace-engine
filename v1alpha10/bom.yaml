@@ -1,0 +1,29 @@
+schemaVersion: 1.0.0
+engine:
+    name: starrocks-ace-engine
+    version: 1.11.4
+dependencies: []
+instances: []
+images:
+    - registry: ghcr.io
+      repository: dxyan06/awc/images/starrocks/operator
+      tag: v1.11.4
+      digest: sha256:9b1be96dcd2d8b9d7310f2fbd14a121d3e16155fc8957f55354abf797d7c800b
+      mediaType: application/vnd.oci.image.index.v1+json
+    - registry: ghcr.io
+      repository: dxyan06/awc/images/starrocks/fe-ubuntu
+      tag: 3.4.3
+      digest: sha256:42b9873ba10940ffd98f61a98ddd0b60fcab6a5eebbc8e1f4ffc3b2f80f860df
+      mediaType: application/vnd.oci.image.index.v1+json
+    - registry: ghcr.io
+      repository: dxyan06/awc/images/starrocks/be-ubuntu
+      tag: 3.4.3
+      digest: sha256:07eba0556b6bb8a4b53f6c83d5765aa57e6c3625472ceddd724388b61a14b4ed
+      mediaType: application/vnd.oci.image.index.v1+json
+operators: []
+charts:
+    - id: kubeStarrocks
+      registry: ghcr.io
+      repository: dxyan06/awc/charts/kube-starrocks
+      version: 1.11.4
+      digest: sha256:b5ececddc731c3f32938cbf30ddf67cb05fa557461467955f8ee7592f186818c

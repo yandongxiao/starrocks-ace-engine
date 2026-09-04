@@ -1,0 +1,57 @@
+# Stage-1 check on the AWC hub: does ace-hub parse what we pushed?
+#
+# ace-hub runs with --watch-all-namespaces=false and logs "namespace-scoped cache enabled,
+# namespace: ace-hub-system" — it reconciles ManifestBundles ONLY in ace-hub-system. Objects in any
+# other namespace are simply never looked at (status stays empty forever; observed 2026-09-02 with
+# a throw-away phoenixai-test namespace). So everything below lives in ace-hub-system. All three
+# objects are new and carry a phoenixai- prefix; nothing pre-existing in that namespace is touched.
+#
+#   kubectl -n ace-hub-system create secret docker-registry phoenixai-ghcr-regcred \
+#       --docker-server=ghcr.io --docker-username=dxyan06 --docker-password=<token>
+#   kubectl apply -f manifestbundles.yaml
+#   kubectl -n ace-hub-system wait manifestbundle -l app.kubernetes.io/part-of=phoenixai-starrocks-demo \
+#       --for=condition=Fetched=True --timeout=120s
+#   kubectl -n ace-hub-system get manifestbundle -l app.kubernetes.io/part-of=phoenixai-starrocks-demo -o yaml \
+#       | yq '.items[] | {name: .metadata.name, conditions: .status.conditions, inventory: .status.inventory}'
+#
+# Expected: both Fetched=True; the engine bundle's inventory lists engine starrocks-ace-engine,
+# capability starrocks-cluster, imageCatalog starrocks-ace-images-1-11-4, chartCatalog
+# starrocks-ace-charts-1-11-4.
+#
+# Tear down (a ManifestBundle keeps polling the registry every `interval` while it exists):
+#   kubectl -n ace-hub-system delete manifestbundle -l app.kubernetes.io/part-of=phoenixai-starrocks-demo
+#   kubectl -n ace-hub-system delete secret phoenixai-ghcr-regcred
+---
+apiVersion: hub.ecosystem.awc.cloudera.com/v1alpha1
+kind: ManifestBundle
+metadata:
+  name: phoenixai-starrocks-engine
+  namespace: ace-hub-system
+  labels:
+    app.kubernetes.io/part-of: phoenixai-starrocks-demo
+spec:
+  source:
+    oci:
+      url: ghcr.io/dxyan06/awc/engines/starrocks-ace-engine   # no scheme, no tag
+      tag: "1.11.4"
+      interval: 5m                                             # CRD minimum is 60s
+  pullSecretRef:
+    name: phoenixai-ghcr-regcred
+---
+# The blueprint URL must end in /blueprints/<blueprint metadata.name>; the controller strips that
+# suffix to locate the sibling engines/ repositories, so this also exercises the path rule.
+apiVersion: hub.ecosystem.awc.cloudera.com/v1alpha1
+kind: ManifestBundle
+metadata:
+  name: phoenixai-starrocks-blueprint
+  namespace: ace-hub-system
+  labels:
+    app.kubernetes.io/part-of: phoenixai-starrocks-demo
+spec:
+  source:
+    oci:
+      url: ghcr.io/dxyan06/awc/blueprints/starrocks-ace-blueprint
+      tag: "1.11.4"
+      interval: 5m
+  pullSecretRef:
+    name: phoenixai-ghcr-regcred

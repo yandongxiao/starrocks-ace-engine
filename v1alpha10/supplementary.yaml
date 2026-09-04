@@ -1,0 +1,114 @@
+---
+# Ancillary CRs shipped alongside engine.yaml as the `supplementary.yaml` layer of the engine
+# artifact (media type application/vnd.ace.supplementary.v1+yaml). This one file replaces the
+# original repo's capabilities.yaml + imagecatalog.yaml + chartcatalog.yaml + role.yaml.
+#
+# The file MUST begin with `---`: ace-hub splits on the separator and decodes every segment as a
+# Kubernetes object, so anything before the first `---` — even a comment — fails with
+# "Object 'Kind' is missing" (observed 2026-09-02). Cloudera's own supplementary.yaml starts the
+# same way.
+#
+# Every image and chart below lives in OUR private registry — nothing is pulled from Docker Hub or
+# the public StarRocks Helm repo at deploy time. mirror.sh copies them there; the registry prefix
+# is the one hard-coded value in this directory (see README: "Changing the registry prefix").
+#
+# Catalog names carry the version (as Cloudera's do: valkey-9-0-4, cai-images-v1-6-0) so two
+# engine versions can coexist on one cluster without their catalogs colliding.
+apiVersion: ecosystem.awc.cloudera.com/v1alpha10
+kind: Capability
+metadata:
+  name: starrocks-cluster
+spec:
+  schema:
+    type: object
+    required:
+      - queryEndpoint
+      - httpEndpoint
+    properties:
+      queryEndpoint:
+        type: object
+        description: "MySQL-compatible query endpoint (port 9030)"
+        required:
+          - host
+          - port
+        properties:
+          host:
+            type: string
+          port:
+            type: integer
+      httpEndpoint:
+        type: object
+        description: "HTTP API endpoint (port 8030)"
+        required:
+          - host
+          - port
+        properties:
+          host:
+            type: string
+          port:
+            type: integer
+---
+apiVersion: ecosystem.awc.cloudera.com/v1alpha10
+kind: ImageCatalog
+metadata:
+  name: starrocks-ace-images-1-11-4
+spec:
+  images:
+    - id: starrocksOperator
+      registry: ghcr.io
+      repository: dxyan06/awc/images/starrocks/operator
+      tag: v1.11.4
+    - id: fe
+      registry: ghcr.io
+      repository: dxyan06/awc/images/starrocks/fe-ubuntu
+      tag: "3.4.3"
+    - id: be
+      registry: ghcr.io
+      repository: dxyan06/awc/images/starrocks/be-ubuntu
+      tag: "3.4.3"
+---
+apiVersion: ecosystem.awc.cloudera.com/v1alpha10
+kind: ChartCatalog
+metadata:
+  name: starrocks-ace-charts-1-11-4
+spec:
+  charts:
+    - id: kubeStarrocks
+      registry: ghcr.io
+      repository: dxyan06/awc/charts/kube-starrocks
+      version: "1.11.4"
+---
+# RBAC for whatever ace-operator has to create from the template above and beyond the Helm
+# release it owns natively: the HTTPRoute and the AuthConfig. Cloudera's cai-plugin ships the
+# same two Flux rules as well even though it also uses spec.releases, so they are kept for parity;
+# valkey-engine ships no role at all. Whether this block is needed at all is settled at first deploy.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: starrocks-ace-engine-role
+rules:
+  - apiGroups: ["source.toolkit.fluxcd.io"]
+    resources: ["helmrepositories"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  - apiGroups: ["helm.toolkit.fluxcd.io"]
+    resources: ["helmreleases"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  - apiGroups: ["security.awc.cloudera.com"]
+    resources: ["authconfigs"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: starrocks-ace-engine-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: starrocks-ace-engine-role
+subjects:
+  - kind: ServiceAccount
+    name: ace-operator-controller-manager
+    namespace: ace-operator-system

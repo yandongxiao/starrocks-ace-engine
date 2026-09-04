@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "2.0.0",
+  "name": "starrocks-ace-engine",
+  "version": "1.11.4",
+  "displayName": "StarRocks ACE Engine",
+  "description": "Deploys a minimal StarRocks cluster (1 FE + 1 BE) via the kube-starrocks Helm chart"
+}
